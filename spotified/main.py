@@ -1,6 +1,8 @@
 import os
 import json
 import requests
+import base64
+import datetime
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -19,9 +21,34 @@ POSTGRES_USER = get_env_variable("POSTGRES_USER")
 POSTGRES_PW = get_env_variable("POSTGRES_PW")
 POSTGRES_DB = get_env_variable("POSTGRES_DB")
 SECRET_KEY = get_env_variable("SECRET_KEY")
+SPOTIFY_CLIENTID = get_env_variable("SPOTIFY_CLIENTID")
+SPOTIFY_CLIENTSECRET = get_env_variable("SPOTIFY_CLIENTSECRET")
 
-SPOTIFY_SCOPES = "user-read-private user-read-email user-read-playback-state user-read-currently-playing user-library-read user-top-read user-read-recently-played"
+# Spotify auth
+CLIENT_CREDS = f"{SPOTIFY_CLIENTID}:{SPOTIFY_CLIENTSECRET}"
+CLIENT_CREDS_B64 = base64.b64encode(CLIENT_CREDS.encode())
 
+TOKEN_URL = "https://accounts.spotify.com/api/token"
+METHOD = "POST"
+TOKEN_DATA = {
+        "grant_type": "client_credentials"
+}
+TOKEN_HEADERS = {
+        "Authorization": f"Basic {CLIENT_CREDS_B64.decode()}"
+}
+SCOPES = "user-read-private user-read-email user-read-playback-state user-read-currently-playing user-library-read user-top-read user-read-recently-played"
+
+# Spotify token respon se
+r = requests.post(url=TOKEN_URL, data=TOKEN_DATA, headers=TOKEN_HEADERS)
+token_response_data = r.json()
+valid_request = r.status_code in range(200, 299)
+
+if valid_request:
+    now = datetime.datetime.now()
+    access_token = token_response_data['access_token']
+    expires_in = token_response_data['expires_in']
+    expires = now + datetime.timedelta(seconds=expires_in)
+    did_expire = expires < now
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
@@ -42,6 +69,10 @@ class User(db.Model):
 def hello():
     return "Hello World!"
 
+@app.route("/spoti")
+def spoti():
+    return r.json()
+
 @app.cli.command('resetdb')
 def resetdb_command():
     """Destroys and creates the database + tables."""
@@ -61,5 +92,4 @@ def resetdb_command():
 
 
 if __name__ == "__main__":
-    app.debug = True
-    app.run()
+    app.run(debug=True)

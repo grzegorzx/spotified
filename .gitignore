@@ -7,3 +7,6 @@ Pipfile.lock
 
 # vscode
 .vscode
+
+# jupyter notebooks for testing auth
+/notebooks
