@@ -4,3 +4,6 @@ Pipfile.lock
 
 # env variables
 .env
+
+# vscode
+.vscode
