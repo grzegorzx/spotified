@@ -1,3 +1,6 @@
 # pipenv
 Pipfile
 Pipfile.lock
+
+# env variables
+.env
