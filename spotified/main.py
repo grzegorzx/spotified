@@ -12,7 +12,7 @@ def get_env_variable(name):
     try:
         return os.environ[name]
     except KeyError:
-        message = "Expected environment variable '{}' not set.".format(name)
+        message = f"Expected environment variable '{name}' not set."
         raise Exception(message)
 
 # get env vars OR ELSE
@@ -24,7 +24,7 @@ SECRET_KEY = get_env_variable("SECRET_KEY")
 SPOTIFY_CLIENTID = get_env_variable("SPOTIFY_CLIENTID")
 SPOTIFY_CLIENTSECRET = get_env_variable("SPOTIFY_CLIENTSECRET")
 
-# Spotify auth
+# Spotify clientauth
 CLIENT_CREDS = f"{SPOTIFY_CLIENTID}:{SPOTIFY_CLIENTSECRET}"
 CLIENT_CREDS_B64 = base64.b64encode(CLIENT_CREDS.encode())
 SCOPES = "user-read-private user-read-email user-read-playback-state user-read-currently-playing user-library-read user-top-read user-read-recently-played"
@@ -81,6 +81,17 @@ class SpotifyAPI(object):
         self.access_token_did_expire = expires < now
         return True
 
+# Spotify client auth
+request_type = "GET"
+endpoint = "https://accounts.spotify.com/authorize"
+client_id = SPOTIFY_CLIENTID
+response_type = "code"
+redirect_uri = "http://127.0.0.1:5000/"
+example_redirect_uri = "https%3A%2F%2Fexample.com%2Fcallback"
+scope = "user-library-read"
+auth_url = f"{endpoint}?client_id={client_id}&response_type={response_type}&redirect_uri={example_redirect_uri}&scope={scope}"
+
+
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
@@ -100,11 +111,16 @@ class User(db.Model):
 def hello():
     return "Hello World!"
 
-@app.route("/auth")
+@app.route("/clientAuth")
 def spoti():
     client = SpotifyAPI(SPOTIFY_CLIENTID, SPOTIFY_CLIENTSECRET)
     client.perform_auth()
     return client.access_token
+
+@app.route("/userAuth")
+def userAuth():
+    return auth_url
+
 
 @app.cli.command('resetdb')
 def resetdb_command():
