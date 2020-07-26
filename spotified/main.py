@@ -27,28 +27,59 @@ SPOTIFY_CLIENTSECRET = get_env_variable("SPOTIFY_CLIENTSECRET")
 # Spotify auth
 CLIENT_CREDS = f"{SPOTIFY_CLIENTID}:{SPOTIFY_CLIENTSECRET}"
 CLIENT_CREDS_B64 = base64.b64encode(CLIENT_CREDS.encode())
-
-TOKEN_URL = "https://accounts.spotify.com/api/token"
-METHOD = "POST"
-TOKEN_DATA = {
-        "grant_type": "client_credentials"
-}
-TOKEN_HEADERS = {
-        "Authorization": f"Basic {CLIENT_CREDS_B64.decode()}"
-}
 SCOPES = "user-read-private user-read-email user-read-playback-state user-read-currently-playing user-library-read user-top-read user-read-recently-played"
 
-# Spotify token respon se
-r = requests.post(url=TOKEN_URL, data=TOKEN_DATA, headers=TOKEN_HEADERS)
-token_response_data = r.json()
-valid_request = r.status_code in range(200, 299)
+class SpotifyAPI(object):
+    access_token = None
+    access_token_expires = datetime.datetime.now()
+    access_token_did_expire = True
+    client_id = None
+    client_secret = None
+    token_url = "https://accounts.spotify.com/api/token"
+    
+    def __init__(self, client_id, client_secret, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.client_id = client_id
+        self.client_secret = client_secret
+        
+    def get_client_credentials(self):
+        """Returns a base64 encoded string"""
+        SPOTIFY_CLIENTID = self.client_id
+        SPOTIFY_CLIENTSECRET = self.client_secret
+        if SPOTIFY_CLIENTID == None or SPOTIFY_CLIENTSECRET == None:
+            raise Exception("You must raise SPOTIFY_CLIENTID and SPOTIFY_CLIENTSECRET.")
 
-if valid_request:
-    now = datetime.datetime.now()
-    access_token = token_response_data['access_token']
-    expires_in = token_response_data['expires_in']
-    expires = now + datetime.timedelta(seconds=expires_in)
-    did_expire = expires < now
+        CLIENT_CREDS = f"{SPOTIFY_CLIENTID}:{SPOTIFY_CLIENTSECRET}"
+        CLIENT_CREDS_B64 = base64.b64encode(CLIENT_CREDS.encode())
+        return CLIENT_CREDS_B64.decode()
+        
+    def get_token_data(self):
+        return {
+            "grant_type": "client_credentials"
+        }
+    
+    def get_token_headers(self):
+        CLIENT_CREDS_B64 = self.get_client_credentials()
+        return {
+            "Authorization": f"Basic {CLIENT_CREDS_B64}"
+        }
+
+    def perform_auth(self):
+        token_url = self.token_url
+        token_data=self.get_token_data()
+        token_headers = self.get_token_headers()
+        r = requests.post(token_url, data=token_data, headers=token_headers)
+        if r.status_code not in range(200, 299):
+            return False
+        data = r.json()
+        now = datetime.datetime.now()
+        access_token = data['access_token']
+        expires_in = data['expires_in']
+        expires = now + datetime.timedelta(seconds=expires_in)
+        self.access_token = access_token
+        self.access_token_expires = expires
+        self.access_token_did_expire = expires < now
+        return True
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
@@ -69,9 +100,11 @@ class User(db.Model):
 def hello():
     return "Hello World!"
 
-@app.route("/spoti")
+@app.route("/auth")
 def spoti():
-    return r.json()
+    client = SpotifyAPI(SPOTIFY_CLIENTID, SPOTIFY_CLIENTSECRET)
+    client.perform_auth()
+    return client.access_token
 
 @app.cli.command('resetdb')
 def resetdb_command():
@@ -89,7 +122,6 @@ def resetdb_command():
     print('Creating tables.')
     db.create_all()
     print('Shiny!')
-
 
 if __name__ == "__main__":
     app.run(debug=True)
