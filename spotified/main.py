@@ -3,8 +3,9 @@ import json
 import requests
 import base64
 import datetime
+from urllib.parse import quote, urlencode
 
-from flask import Flask
+from flask import Flask, redirect, request
 from flask_sqlalchemy import SQLAlchemy
 
 
@@ -82,14 +83,13 @@ class SpotifyAPI(object):
         return True
 
 # Spotify client auth
-request_type = "GET"
 endpoint = "https://accounts.spotify.com/authorize"
 client_id = SPOTIFY_CLIENTID
 response_type = "code"
-redirect_uri = "http://127.0.0.1:5000/"
+redirect_uri = quote("http://127.0.0.1:5000/callback/")
 example_redirect_uri = "https%3A%2F%2Fexample.com%2Fcallback"
 scope = "user-library-read"
-auth_url = f"{endpoint}?client_id={client_id}&response_type={response_type}&redirect_uri={example_redirect_uri}&scope={scope}"
+auth_url = f"{endpoint}?client_id={client_id}&response_type={response_type}&redirect_uri={redirect_uri}&scope={scope}"
 
 
 app = Flask(__name__)
@@ -117,10 +117,14 @@ def spoti():
     client.perform_auth()
     return client.access_token
 
-@app.route("/userAuth")
-def userAuth():
-    return auth_url
+@app.route("/auth")
+def auth():
+    return redirect(auth_url)
 
+@app.route("/callback/")
+def callback_code():
+    auth_code = request.args.get('code')
+    return auth_code
 
 @app.cli.command('resetdb')
 def resetdb_command():
