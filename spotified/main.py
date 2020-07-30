@@ -5,7 +5,7 @@ import base64
 import datetime
 from urllib.parse import quote, urlencode
 
-from flask import Flask, redirect, request
+from flask import Flask, redirect, request, url_for
 from flask_sqlalchemy import SQLAlchemy
 
 
@@ -86,10 +86,10 @@ class SpotifyAPI(object):
 endpoint = "https://accounts.spotify.com/authorize"
 client_id = SPOTIFY_CLIENTID
 response_type = "code"
-redirect_uri = quote("http://127.0.0.1:5000/callback/")
+redirect_uri = "http://127.0.0.1:5000/callback/"
 example_redirect_uri = "https%3A%2F%2Fexample.com%2Fcallback"
 scope = "user-library-read"
-auth_url = f"{endpoint}?client_id={client_id}&response_type={response_type}&redirect_uri={redirect_uri}&scope={scope}"
+auth_url = f"{endpoint}?client_id={client_id}&response_type={response_type}&redirect_uri={quote(redirect_uri)}&scope={scope}"
 
 
 app = Flask(__name__)
@@ -121,10 +121,42 @@ def spoti():
 def auth():
     return redirect(auth_url)
 
+
+AUTH = { 
+  'spotify': None,
+  'access_token': None
+}
+
+tracks_endpoint = "https://api.spotify.com/v1/me/tracks"
+
 @app.route("/callback/")
 def callback_code():
-    auth_code = request.args.get('code')
-    return auth_code
+    AUTH['spotify'] = request.args.get('code')
+    return redirect(url_for('api_token'))
+
+@app.route("/api_token")
+def api_token():
+    auth_body = {
+        "grant_type":"authorization_code",
+        "code":AUTH['spotify'],
+        "redirect_uri":redirect_uri,
+    }    
+    auth_headers = {
+        "Authorization":f"Basic {CLIENT_CREDS_B64.decode()}"
+    }
+    r = requests.post("https://accounts.spotify.com/api/token", data=auth_body, headers=auth_headers)
+    r = r.json()
+    AUTH['access_token'] = r['access_token']
+    return redirect(url_for('tracks'))
+
+@app.route("/tracks")
+def tracks():
+    tracks_auth = {
+      "Authorization":f"Bearer {AUTH['access_token']}"
+    }
+    tracks = requests.get(tracks_endpoint, headers=tracks_auth)
+    return tracks.json()
+    # return tracks_auth
 
 @app.cli.command('resetdb')
 def resetdb_command():
