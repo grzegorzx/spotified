@@ -109,6 +109,13 @@ class User(db.Model):
     spotify_id = db.Column(db.String(200), unique=False, nullable=True)
     spotify_token = db.Column(db.String(200), unique=False, nullable=True)
 
+class Tracks(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), unique=False, nullable=True)
+    popularity = db.Column(db.Integer, unique=False, nullable=True)
+    album = db.Column(db.String(200), unique=False, nullable=True)
+    artist = db.Column(db.String, unique=False, nullable=True)
+
 @app.route("/")
 def hello():
     return "Hello World!"
@@ -169,24 +176,15 @@ def tracks():
             'album': None,
             'artist': None
             }
-        for i in tracks_data['items']:
-            temp_tracks['name'] = i['track']['name']
-            print(temp_tracks['name'])
-        for i in tracks_data['items']:
-            temp_tracks['popularity'] = i['track']['popularity']
-            print(temp_tracks['popularity'])
-        for i in tracks_data['items']:
-            temp_tracks['album'] = i['track']['album']['name']
-            print(temp_tracks['album'])
-        for i in tracks_data['items']:
-            temp_artist = []
-            for x in i['track']['artists']:
-                temp_artist.append(x['name'])
-            temp_tracks['artist'] = temp_artist
-            print(temp_tracks['artist'])
+        temp_tracks['name'] = i['track']['name']
+        temp_tracks['popularity'] = i['track']['popularity']
+        temp_tracks['album'] = i['track']['album']['name']
+        temp_artist = []
+        for x in i['track']['artists']:
+            temp_artist.append(x['name'])
+        temp_tracks['artist'] = temp_artist
         tracks_db.append(temp_tracks)
     return str(tracks_db)
-    # return tracks_data
 
 @app.cli.command('resetdb')
 def resetdb_command():
