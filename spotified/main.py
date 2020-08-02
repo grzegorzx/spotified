@@ -91,6 +91,8 @@ example_redirect_uri = "https%3A%2F%2Fexample.com%2Fcallback"
 scope = "user-library-read"
 auth_url = f"{endpoint}?client_id={client_id}&response_type={response_type}&redirect_uri={quote(redirect_uri)}&scope={scope}"
 
+# table
+tracks_db = []
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
@@ -127,8 +129,6 @@ AUTH = {
   'access_token': None
 }
 
-tracks_endpoint = "https://api.spotify.com/v1/me/tracks"
-
 @app.route("/callback/")
 def callback_code():
     AUTH['spotify'] = request.args.get('code')
@@ -151,12 +151,42 @@ def api_token():
 
 @app.route("/tracks")
 def tracks():
+    tracks_endpoint = "https://api.spotify.com/v1/me/tracks"
+    tracks_parameters = {
+        'limit':'50'
+    }
     tracks_auth = {
       "Authorization":f"Bearer {AUTH['access_token']}"
     }
-    tracks = requests.get(tracks_endpoint, headers=tracks_auth)
-    return tracks.json()
-    # return tracks_auth
+    tracks = requests.get(tracks_endpoint, headers=tracks_auth, params=tracks_parameters)
+
+    tracks_data = tracks.json()
+
+    for i in tracks_data['items']:
+        temp_tracks = {
+            'name': None,
+            'popularity': None,
+            'album': None,
+            'artist': None
+            }
+        for i in tracks_data['items']:
+            temp_tracks['name'] = i['track']['name']
+            print(temp_tracks['name'])
+        for i in tracks_data['items']:
+            temp_tracks['popularity'] = i['track']['popularity']
+            print(temp_tracks['popularity'])
+        for i in tracks_data['items']:
+            temp_tracks['album'] = i['track']['album']['name']
+            print(temp_tracks['album'])
+        for i in tracks_data['items']:
+            temp_artist = []
+            for x in i['track']['artists']:
+                temp_artist.append(x['name'])
+            temp_tracks['artist'] = temp_artist
+            print(temp_tracks['artist'])
+        tracks_db.append(temp_tracks)
+    return str(tracks_db)
+    # return tracks_data
 
 @app.cli.command('resetdb')
 def resetdb_command():
