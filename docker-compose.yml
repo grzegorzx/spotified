@@ -1,20 +1,34 @@
-version: '2'
+version: '3'
 
 volumes:
-  # for persistence between restarts
   postgres_data: {}
+  metabase_data: {}
 
 services:
+
   db:
     image: postgres:9.6.3
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: dbpw
-    ports: #make db accessible locally
-      - "127.0.0.1:5432:5432"
-  redis:
-    image: redis:3.2.9
-    ports: #make redis accessible locally
-      - "127.0.0.1:6379:6379"
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PW}
+    ports:
+      - 5432:5432
+
+  metabase:
+    image: metabase/metabase
+    restart: always
+    ports:
+      - 3000:3000
+    volumes:
+      - metabase_data:/var/lib/metabase/data
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: ${POSTGRES_DB}
+      MB_DB_PORT: ${POSTGRES_PORT}
+      MB_DB_USER: ${POSTGRES_USER}
+      MB_DB_PASS: ${POSTGRES_PW}
+      MB_DB_HOST: host.docker.internal
+      #hostname for metabase when setting up: host.docker.internal
