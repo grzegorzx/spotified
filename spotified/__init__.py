@@ -97,29 +97,39 @@ tracks_db = []
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
-
+#
 DB_URL = f'postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PW}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}'
+# DB_URL='sqlite:///mockup_db.db'
 
 app.config['SQLALCHEMY_DATABASE_URI'] = DB_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # silence the deprecation warning
+app.config['FLASK_APP']='spotified'
+app.config['FLASK_ENV']='development'
 
 db = SQLAlchemy(app)
+# db.session.commit()
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     spotify_id = db.Column(db.String(200), unique=False, nullable=True)
     spotify_token = db.Column(db.String(200), unique=False, nullable=True)
 
-class Tracks(db.Model):
+    def __repr__(self):
+        return f"User('{self.id}, '{self.spotify_id}, {self.spotify_token}"
+
+class Track(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), unique=False, nullable=True)
     popularity = db.Column(db.Integer, unique=False, nullable=True)
     album = db.Column(db.String(200), unique=False, nullable=True)
     artist = db.Column(db.String(200), unique=False, nullable=True)
 
+    def __repr__(self):
+        return f"Track('{self.id}, '{self.name}, {self.popularity}, {self.album}, {self.artist}"
+
 @app.route("/")
 def hello():
-    return "Hello World!"
+    return "Hello World2!"
 
 @app.route("/clientAuth")
 def spoti():
@@ -183,9 +193,24 @@ def tracks():
         temp_artist = []
         for x in i['track']['artists']:
             temp_artist.append(x['name'])
-        temp_tracks['artist'] = temp_artist
+        temp_tracks['artist'] = str(temp_artist)
         tracks_db.append(temp_tracks)
-    return str(tracks_db)
+
+        # # track = Track(**tracks_db)
+        # db.session.add(track)
+        # db.session.commit()
+
+        for i in tracks_db:
+            track = Track(**i)
+            db.session.add(track)
+        db.session.commit()
+    return 'Success!'
+
+@app.route('/query')
+def query_tracks():
+    result = Track.query.all()
+    print(result)
+    return str(result)
 
 @app.cli.command('resetdb')
 def resetdb_command():
